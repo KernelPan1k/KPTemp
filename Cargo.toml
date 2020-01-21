@@ -1,0 +1,49 @@
+[package]
+name = "kp_temp"
+version = "0.1.0"
+authors = ["kernel-panik"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.dev]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 16
+panic = 'unwind'
+incremental = true
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 16
+panic = 'unwind'
+incremental = false
+overflow-checks = false
+
+[dependencies]
+walkdir = "2.2.9"
+pretty-bytes = "0.2.2"
+winapi = { version = "0.3.8", features = ["wingdi", "psapi", "processthreadsapi", "winnt", "securitybaseapi", "shellapi", "winuser", "reason", "windef", "handleapi", "libloaderapi", "commctrl"] }
+[target.'cfg(target_os="windows")'.build-dependencies]
+winres = "0.1"
+winapi = { version = "0.3.8", features = ["winnt"] }
+
+[package.metadata.winres]
+OriginalFilename = "kp_temp.exe"
+CompanyName= "kernel-panik"
+LegalCopyright = "Copyright © 2016"
+FileVersion= "1.0.0.3"
+FileDescription= "KpTemp By Kernel-Panik "
+ProductVersion= "1.3"
+ProductName= "KPTemp"
+LegalTrademark= "kernel-panik"
+Comments= "Deleting temporary files"
