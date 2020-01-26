@@ -32,6 +32,7 @@ overflow-checks = false
 [dependencies]
 walkdir = "2.2.9"
 pretty-bytes = "0.2.2"
+chrono = "0.4.10"
 winapi = { version = "0.3.8", features = ["wingdi", "psapi", "processthreadsapi", "winnt", "securitybaseapi", "shellapi", "winuser", "reason", "windef", "handleapi", "libloaderapi", "commctrl"] }
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
@@ -41,9 +42,9 @@ winapi = { version = "0.3.8", features = ["winnt"] }
 OriginalFilename = "kp_temp.exe"
 CompanyName= "kernel-panik"
 LegalCopyright = "Copyright © 2016"
-FileVersion= "1.0.0.3"
+FileVersion= "1.0.0.4"
 FileDescription= "KpTemp By Kernel-Panik "
-ProductVersion= "1.3"
+ProductVersion= "1.4"
 ProductName= "KPTemp"
 LegalTrademark= "kernel-panik"
 Comments= "Deleting temporary files"

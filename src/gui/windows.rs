@@ -17,6 +17,7 @@ use winapi::um::winuser::{
 };
 
 use crate::clean::clean;
+use crate::globals::{LABEL_HANDLE, PROGRESS_HANDLE, TOTAL_STEP};
 use crate::gui::{CheckState, ControlT, HTextAlign, ProgressBarState};
 use crate::gui::button::ButtonT;
 use crate::gui::checkbox::{CheckBoxT, get_checkstate};
@@ -28,13 +29,9 @@ use crate::process::kill_process;
 use crate::utils::{exit_all, restart};
 
 const BUTTON_EVENT: u16 = 1;
-pub const TOTAL_STEP: u32 = 141;
 static mut STATE_RUNNING: bool = false;
-
 static mut WINDOWS_OLD_HANDLE: HWND = null_mut();
 static mut RUN_HANDLE: HWND = null_mut();
-pub static mut LABEL_HANDLE: HWND = null_mut();
-pub static mut PROGRESS_HANDLE: HWND = null_mut();
 
 pub unsafe extern "system" fn window_proc(h_wnd: HWND, msg: UINT, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     if msg == WM_DESTROY {

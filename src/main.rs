@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 
+extern crate chrono;
 extern crate pretty_bytes;
 extern crate walkdir;
 extern crate winapi;
@@ -11,6 +12,7 @@ mod gui;
 mod clean;
 mod process;
 mod privilege;
+mod globals;
 mod utils;
 
 trait Ignore: Sized {

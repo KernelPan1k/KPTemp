@@ -1,11 +1,16 @@
+use std::env::var;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{Error, Write};
 use std::iter::once;
-use std::mem::size_of;
+use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
+use std::path::PathBuf;
 use std::process::exit;
 use std::ptr::null_mut;
 
-use winapi::_core::mem::zeroed;
+use chrono::{DateTime, Local};
+use pretty_bytes::converter::convert;
 use winapi::shared::winerror::S_OK;
 use winapi::um::reason::SHTDN_REASON_MINOR_MAINTENANCE;
 use winapi::um::shellapi::{SHEmptyRecycleBinW, SHERB_NOCONFIRMATION, SHQUERYRBINFO, SHQueryRecycleBinW};
@@ -14,6 +19,8 @@ use winapi::um::winuser::{
     IDYES, MB_ICONINFORMATION, MB_ICONQUESTION, MB_OK, MB_TOPMOST, MB_YESNO, MessageBoxW,
 };
 
+use crate::clean::TempComponent;
+use crate::globals::KPTEMP_VERSION;
 use crate::privilege::adjust_privilege;
 
 pub fn restart() {
@@ -105,4 +112,50 @@ pub fn to_utf16(s: &str) -> Vec<u16> {
 pub unsafe fn exit_all() {
     PostMessageW(null_mut(), WM_QUIT, 0, 0);
     exit(0);
+}
+
+pub unsafe fn write_report(
+    temp_components: &Vec<TempComponent>,
+    r_len: i64,
+    r_size: i64,
+    total_len: u64,
+    total_size: u64,
+) -> Result<(), Error> {
+    let local: DateTime<Local> = Local::now();
+    let user_profile: PathBuf = PathBuf::from(var("USERPROFILE").unwrap_or("C:\\".to_string()));
+    let local_datetime = local.format("%a %b %e %T %Y");
+    let report: PathBuf = user_profile.join(format!(
+        "Desktop\\KpTemp_{}.txt", local.format("%Y-%m-%d_%H-%M-%S").to_string()
+    ));
+    let mut output = File::create(report);
+
+    write!(output, "{}", format!("KpTemp v{} by kernel-panik\n", KPTEMP_VERSION))?;
+    write!(output, "{}", format!("Date: {}\n\n", local_datetime.to_string()))?;
+
+    if 0 == temp_components.len() {
+        write!(output, "No records found\n")?;
+    } else {
+        for temp_component in temp_components {
+            write!(output, "{}", format!(
+                "{} : {} files => {} deleted\n",
+                temp_component.path.display(),
+                temp_component.len,
+                convert(temp_component.size as f64)
+            ))?;
+        }
+    }
+
+    write!(output, "{}", format!(
+        "RecycleBin : {} files => {} deleted\n",
+        r_len,
+        convert(r_size as f64)
+    ))?;
+
+    write!(output, "{}", format!(
+        "Total : {} files => {} deleted\n",
+        total_len,
+        convert(total_size as f64)
+    ))?;
+
+    Ok(())
 }

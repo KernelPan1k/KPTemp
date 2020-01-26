@@ -13,12 +13,12 @@ use pretty_bytes::converter::convert;
 use walkdir::WalkDir;
 use winapi::um::winbase::{MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW};
 
+use crate::globals::{LABEL_HANDLE, PROGRESS_HANDLE, TOTAL_STEP};
 use crate::gui::progress_bar::advance_progress_bar;
-use crate::gui::windows::{LABEL_HANDLE, PROGRESS_HANDLE, TOTAL_STEP};
 use crate::gui::windows_helper::set_window_text;
 use crate::Ignore;
 use crate::privilege::adjust_privilege;
-use crate::utils::{data_recycle_bin, empty_recycle_bin, error_box, message_box, restart};
+use crate::utils::{data_recycle_bin, empty_recycle_bin, error_box, message_box, restart, write_report};
 
 #[derive(PartialEq, Eq)]
 enum DeletionType {
@@ -26,10 +26,10 @@ enum DeletionType {
     Extension,
 }
 
-struct TempComponent {
-    path: PathBuf,
-    size: u64,
-    len: u64,
+pub(crate) struct TempComponent {
+    pub(crate) path: PathBuf,
+    pub(crate) size: u64,
+    pub(crate) len: u64,
     depth: usize,
     min_depth: usize,
     extension: &'static OsStr,
@@ -605,14 +605,15 @@ pub fn clean(old: bool) {
         advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
     }
 
-    let (r_nbr, r_size) = unsafe { data_recycle_bin() };
+    let (r_len, r_size) = unsafe { data_recycle_bin() };
 
-    total_len += r_nbr as u64;
+    total_len += r_len as u64;
     total_size += r_size as u64;
 
     advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
     unsafe { set_window_text(LABEL_HANDLE, "Clear recycle bin"); }
     empty_recycle_bin();
     advance_progress_bar(unsafe { PROGRESS_HANDLE }, TOTAL_STEP);
+    unsafe { write_report(&temp_components, r_len, r_size, total_len, total_size); }
     message_box(format!("Success {} files and {} deleted", total_len, convert(total_size as f64)));
 }
