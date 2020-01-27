@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env::{var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fs::{File, Permissions, remove_dir_all, remove_file, set_permissions, symlink_metadata};
+use std::fs::{File, Permissions, read_to_string, remove_dir_all, remove_file, set_permissions, symlink_metadata};
 use std::io::{Error, Write};
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -21,6 +21,8 @@ use crate::gui::windows_helper::set_window_text;
 use crate::Ignore;
 use crate::privilege::adjust_privilege;
 use crate::utils::{data_recycle_bin, empty_recycle_bin, error_box, message_box, restart};
+
+// TODO Please Refactor ME
 
 #[derive(PartialEq, Eq)]
 enum DeletionType {
@@ -190,6 +192,8 @@ fn walk<F>(component: &mut TempComponent, callback: F)
         let path: &Path = entry.path();
         callback(path, component);
     }
+
+    advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
 }
 
 fn get_walk_glob_file(
@@ -371,43 +375,39 @@ fn get_walk_all(
 
             build_component(path);
         }
-
-        advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
     }
 
-    match var_os("TEMP") {
-        Some(p) => {
-            let path = PathBuf::from(p);
-
-            if check_path(&path, true, false) {
-                let mut temp_component = TempComponent::new_clear(path);
-                walk(&mut temp_component, get_len_and_size);
-
-                if temp_component.len > 1 {
-                    temp_components.push(temp_component);
-                }
-            }
-        }
-        _ => {}
+    let user_temp = match var("USERPROFILE") {
+        Ok(p) => Some(format!("{}\\AppData\\Local\\Temp", p)),
+        _ => None
     };
 
-    advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
+    let mut temp = var("TEMP").ok();
 
-    match var_os("TMP") {
-        Some(p) => {
-            let path = PathBuf::from(p);
+    if user_temp.is_none() || temp.is_none() {
+        return;
+    }
 
-            if check_path(&path, true, false) {
-                let mut temp_component = TempComponent::new_clear(path);
-                walk(&mut temp_component, get_len_and_size);
+    if temp == user_temp {
+        return;
+    }
 
-                if temp_component.len > 1 {
-                    temp_components.push(temp_component);
-                }
-            }
+    let temp = temp.get_or_insert("".to_string()).as_str();
+
+    if temp == "" {
+        return;
+    }
+
+    let path = PathBuf::from(temp);
+
+    if check_path(&path, true, false) {
+        let mut temp_component = TempComponent::new_clear(path);
+        walk(&mut temp_component, get_len_and_size);
+
+        if temp_component.len > 1 {
+            temp_components.push(temp_component);
         }
-        _ => {}
-    };
+    }
 
     advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
 }
@@ -544,12 +544,19 @@ fn get_system_vars() -> HashMap<&'static str, PathBuf> {
             "Default".to_string()
         );
 
-    let user_profile: String = var("USERPROFILE")
+    let user_profile_string: String = var("USERPROFILE")
         .unwrap_or(
             format!("{}\\Users\\{}", system_drive_string, username)
         );
 
-    let mut spt_user_profile: Vec<&str> = user_profile.split("\\").collect();
+    let user_profile: PathBuf = PathBuf::from(
+        var_os("USERPROFILE")
+            .unwrap_or(
+                OsString::from(&user_profile_string)
+            )
+    );
+
+    let mut spt_user_profile: Vec<&str> = user_profile_string.split("\\").collect();
     spt_user_profile.truncate(spt_user_profile.len() - 1);
 
     let base_user_profile: PathBuf = PathBuf::from(spt_user_profile.join("\\"));
@@ -558,12 +565,14 @@ fn get_system_vars() -> HashMap<&'static str, PathBuf> {
     check_path(&sys32, false, true);
     check_path(&base_user_profile, false, true);
     check_path(&all_user_profile, false, true);
+    check_path(&user_profile, false, true);
 
     system_vars.insert("system_drive", system_drive);
     system_vars.insert("system_root", system_root);
     system_vars.insert("sys32", sys32);
     system_vars.insert("base_user_profile", base_user_profile);
     system_vars.insert("all_user_profile", all_user_profile);
+    system_vars.insert("user_profile", user_profile);
 
     system_vars
 }
@@ -617,9 +626,7 @@ pub fn clean(old: bool) -> Result<(), Error> {
 
     for mut temp_component in temp_components {
         walk(&mut temp_component, clear);
-        advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
         walk(&mut temp_component, remove_on_reboot);
-        advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
 
         output.write_all(format!(
             "{} : {} files => {} deleted\r\n",
@@ -635,7 +642,7 @@ pub fn clean(old: bool) -> Result<(), Error> {
     total_size += r_size as u64;
 
     output.write_all(format!(
-        "RecycleBin : {} files => {} deleted\r\n\r\n",
+        "Recycle Bin : {} files => {} deleted\r\n\r\n",
         r_len,
         convert(r_size as f64)
     ).as_bytes())?;
