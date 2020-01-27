@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::env::{var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fs::{Permissions, remove_dir_all, remove_file, set_permissions, symlink_metadata};
+use std::fs::{File, Permissions, remove_dir_all, remove_file, set_permissions, symlink_metadata};
+use std::io::{Error, Write};
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::ptr::null;
@@ -9,16 +10,17 @@ use std::thread;
 use std::time::Duration;
 use std::usize::MAX as MAX_DEPTH;
 
+use chrono::{DateTime, Local};
 use pretty_bytes::converter::convert;
 use walkdir::WalkDir;
 use winapi::um::winbase::{MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW};
 
-use crate::globals::{LABEL_HANDLE, PROGRESS_HANDLE, TOTAL_STEP};
+use crate::globals::{KPTEMP_VERSION, LABEL_HANDLE, PROGRESS_HANDLE, TOTAL_STEP};
 use crate::gui::progress_bar::advance_progress_bar;
 use crate::gui::windows_helper::set_window_text;
 use crate::Ignore;
 use crate::privilege::adjust_privilege;
-use crate::utils::{data_recycle_bin, empty_recycle_bin, error_box, message_box, restart, write_report};
+use crate::utils::{data_recycle_bin, empty_recycle_bin, error_box, message_box, restart};
 
 #[derive(PartialEq, Eq)]
 enum DeletionType {
@@ -26,10 +28,10 @@ enum DeletionType {
     Extension,
 }
 
-pub(crate) struct TempComponent {
-    pub(crate) path: PathBuf,
-    pub(crate) size: u64,
-    pub(crate) len: u64,
+struct TempComponent {
+    path: PathBuf,
+    size: u64,
+    len: u64,
     depth: usize,
     min_depth: usize,
     extension: &'static OsStr,
@@ -566,12 +568,18 @@ fn get_system_vars() -> HashMap<&'static str, PathBuf> {
     system_vars
 }
 
-pub fn clean(old: bool) {
+pub fn clean(old: bool) -> Result<(), Error> {
     adjust_privilege("SeRestorePrivilege");
 
     let system_vars: HashMap<&'static str, PathBuf> = get_system_vars();
     let users_profile_dirs: Vec<PathBuf> = get_users_dirs(&system_vars);
     let mut temp_components: Vec<TempComponent> = Vec::new();
+    let local: DateTime<Local> = Local::now();
+    let user_profile: PathBuf = PathBuf::from(var("USERPROFILE").unwrap_or("C:\\".to_string()));
+    let local_datetime = local.format("%a %b %e %T %Y");
+    let report: PathBuf = user_profile.join(format!(
+        "Desktop\\KpTemp_{}.txt", local.format("%Y-%m-%d_%H-%M-%S").to_string()
+    ));
 
     let nbr_row = 41 + 3;
 
@@ -598,11 +606,27 @@ pub fn clean(old: bool) {
         total_len += temp_component.len;
     }
 
+    let mut output = File::create(report)?;
+
+    output.write_all(format!("KpTemp v{} by kernel-panik\r\n", KPTEMP_VERSION).as_bytes())?;
+    output.write_all(format!("Date: {}\r\n\r\n", local_datetime.to_string()).as_bytes())?;
+
+    if 0 == temp_components.len() {
+        output.write_all("No records found\n".as_bytes())?;
+    }
+
     for mut temp_component in temp_components {
         walk(&mut temp_component, clear);
         advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
         walk(&mut temp_component, remove_on_reboot);
         advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
+
+        output.write_all(format!(
+            "{} : {} files => {} deleted\r\n",
+            temp_component.path.display(),
+            temp_component.len,
+            convert(temp_component.size as f64)
+        ).as_bytes())?;
     }
 
     let (r_len, r_size) = unsafe { data_recycle_bin() };
@@ -610,10 +634,23 @@ pub fn clean(old: bool) {
     total_len += r_len as u64;
     total_size += r_size as u64;
 
+    output.write_all(format!(
+        "RecycleBin : {} files => {} deleted\r\n\r\n",
+        r_len,
+        convert(r_size as f64)
+    ).as_bytes())?;
+
+    output.write_all(format!(
+        "Total : {} files => {} deleted\r\n",
+        total_len,
+        convert(total_size as f64)
+    ).as_bytes())?;
+
     advance_progress_bar(unsafe { PROGRESS_HANDLE }, 1);
     unsafe { set_window_text(LABEL_HANDLE, "Clear recycle bin"); }
     empty_recycle_bin();
     advance_progress_bar(unsafe { PROGRESS_HANDLE }, TOTAL_STEP);
-    unsafe { write_report(&temp_components, r_len, r_size, total_len, total_size); }
     message_box(format!("Success {} files and {} deleted", total_len, convert(total_size as f64)));
+
+    Ok(())
 }

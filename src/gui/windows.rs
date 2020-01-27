@@ -50,7 +50,7 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND, msg: UINT, w_param: WPARA
                 thread::spawn(move || {
                     let old_check: bool = get_checkstate(WINDOWS_OLD_HANDLE) == CheckState::Checked;
                     set_window_text(LABEL_HANDLE, "Start clean ...");
-                    clean(old_check);
+                    let _ = clean(old_check);
                     set_window_text(LABEL_HANDLE, "Restart ...");
                     restart();
                 });
