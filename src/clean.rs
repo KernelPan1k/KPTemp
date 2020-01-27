@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env::{var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fs::{File, Permissions, read_to_string, remove_dir_all, remove_file, set_permissions, symlink_metadata};
+use std::fs::{File, Permissions, remove_dir_all, remove_file, set_permissions, symlink_metadata};
 use std::io::{Error, Write};
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
