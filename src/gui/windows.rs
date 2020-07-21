@@ -96,9 +96,9 @@ pub unsafe fn build_root_window() {
     };
 
     let windows_old = CheckBoxT {
-        text: "Remove Windows.old",
-        position: (170, 50),
-        size: (160, 20),
+        text: "Remove Windows.old (can take a long time)",
+        position: (100, 50),
+        size: (320, 20),
         visible: true,
         disabled: false,
         parent: windows_handle,

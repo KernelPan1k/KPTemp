@@ -420,6 +420,12 @@ fn windows_old(
 
     let paths = [
         PathBuf::from("\\Windows.old"),
+        PathBuf::from("\\Windows.old.000"),
+        PathBuf::from("\\Windows.old.001"),
+        PathBuf::from("\\Windows.old.002"),
+        PathBuf::from("\\Windows.old.003"),
+        PathBuf::from("\\Windows.old.004"),
+        PathBuf::from("\\Windows.old.005"),
         PathBuf::from("\\$WINDOWS.~BT"),
         PathBuf::from("\\$Windows.~WS"),
     ];
