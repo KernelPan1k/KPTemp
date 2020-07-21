@@ -1,6 +1,6 @@
 [package]
 name = "kp_temp"
-version = "0.1.0"
+version = "0.1.6"
 authors = ["kernel-panik"]
 edition = "2018"
 build = "build.rs"
@@ -32,19 +32,19 @@ overflow-checks = false
 [dependencies]
 walkdir = "2.3.1"
 pretty-bytes = "0.2.2"
-chrono = "0.4.11"
-winapi = { version = "0.3.8", features = ["wingdi", "psapi", "processthreadsapi", "winnt", "securitybaseapi", "shellapi", "winuser", "reason", "windef", "handleapi", "libloaderapi", "commctrl"] }
+chrono = "0.4.13"
+winapi = { version = "0.3.9", features = ["wingdi", "psapi", "processthreadsapi", "winnt", "securitybaseapi", "shellapi", "winuser", "reason", "windef", "handleapi", "libloaderapi", "commctrl"] }
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1.11"
-winapi = { version = "0.3.8", features = ["winnt"] }
+winapi = { version = "0.3.9", features = ["winnt"] }
 
 [package.metadata.winres]
 OriginalFilename = "kp_temp.exe"
 CompanyName= "kernel-panik"
-LegalCopyright = "Copyright © 2016"
-FileVersion= "1.0.0.5"
+LegalCopyright = "Copyright © 2020"
+FileVersion= "1.0.0.6"
 FileDescription= "KpTemp By Kernel-Panik "
-ProductVersion= "1.5"
+ProductVersion= "1.6"
 ProductName= "KPTemp"
 LegalTrademark= "kernel-panik"
 Comments= "Deleting temporary files"
